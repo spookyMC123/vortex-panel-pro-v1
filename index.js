@@ -20,48 +20,46 @@ PENALTIES, AND WILL BE PROSECUTED TO THE MAXIMUM EXTENT POSSIBLE UNDER LAW.
 © 2025 Hydren, INC. ALL RIGHTS RESERVED.
 
 */ 
+
 const express = require('express');
 const session = require('express-session');
 const passport = require('passport');
 const bodyParser = require('body-parser');
 const CatLoggr = require('cat-loggr');
 const fs = require('node:fs');
-const config = require('./config.json')
+const config = require('./config.json');
 const ascii = fs.readFileSync('./handlers/ascii.txt', 'utf8');
-const app = express();
 const path = require('path');
 const chalk = require('chalk');
-const expressWs = require('express-ws')(app);
-const { db } = require('./handlers/db.js')
-const translationMiddleware = require('./handlers/translation');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const theme = require('./storage/theme.json');
-
-
+const { db } = require('./handlers/db.js');
+const translationMiddleware = require('./handlers/translation');
+const expressWs = require('express-ws');
 const sqlite = require("better-sqlite3");
 const SqliteStore = require("better-sqlite3-session-store")(session);
-const sessionstorage = new sqlite("sessions.db");
 const { loadPlugins } = require('./plugins/loadPls.js');
-let plugins = loadPlugins(path.join(__dirname, './plugins'));
-plugins = Object.values(plugins).map(plugin => plugin.config);
 const { init } = require('./handlers/init.js');
 
-const log = new CatLoggr();
+const app = express();
+expressWs(app);
 
+const log = new CatLoggr();
+const sessionstorage = new sqlite("sessions.db");
+
+// Middleware setup
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-
-app.use(cookieParser())
-
+app.use(cookieParser());
 app.use(translationMiddleware);
 
+// Rate limiter for POST requests
 const postRateLimiter = rateLimit({
-  windowMs: 60 * 100,
+  windowMs: 60 * 1000,
   max: 6,
   message: 'Too many requests, please try again later'
 });
-
 app.use((req, res, next) => {
   if (req.method === 'POST') {
     postRateLimiter(req, res, next);
@@ -70,26 +68,25 @@ app.use((req, res, next) => {
   }
 });
 
-app.set('view engine', 'ejs');
-app.use(
-  session({
-    store: new SqliteStore({
-      client: sessionstorage,
-      expired: {
-        clear: true,
-        intervalMs: 9000000
-      }
-    }),
-    secret: "secret",
-    resave: true,
-    saveUninitialized: true
-  })
-);
+// Session config
+app.use(session({
+  store: new SqliteStore({
+    client: sessionstorage,
+    expired: {
+      clear: true,
+      intervalMs: 9000000
+    }
+  }),
+  secret: "secret",
+  resave: true,
+  saveUninitialized: true
+}));
+
+// Load theme, language and meta into locals
 app.use(async (req, res, next) => {
   try {
     const settings = await db.get('settings');
-
-    res.locals.languages = getlanguages();
+    res.locals.languages = getLanguages();
     res.locals.ogTitle = config.ogTitle;
     res.locals.ogDescription = config.ogDescription;
     res.locals.footer = settings.footer;
@@ -101,12 +98,12 @@ app.use(async (req, res, next) => {
   }
 });
 
-
-if (config.mode === 'production' || false) {
+// Caching control for production mode
+if (config.mode === 'production') {
   app.use((req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '5');
+    res.setHeader('Expires', '0');
     next();
   });
 
@@ -120,88 +117,83 @@ if (config.mode === 'production' || false) {
 app.use(passport.initialize());
 app.use(passport.session());
 
-const pluginRoutes = require('./plugins/pluginmanager.js');
-app.use("/", pluginRoutes);
+// EJS View Engine and Plugin Views
+app.set('view engine', 'ejs');
 const pluginDir = path.join(__dirname, 'plugins');
-const PluginViewsDir = fs.readdirSync(pluginDir).map(addonName => path.join(pluginDir, addonName, 'views'));
+const PluginViewsDir = fs.readdirSync(pluginDir).map(addon => path.join(pluginDir, addon, 'views'));
 app.set('views', [path.join(__dirname, 'views'), ...PluginViewsDir]);
 
-// Init
-init();
+// Load plugins
+let plugins = loadPlugins(pluginDir);
+plugins = Object.values(plugins).map(plugin => plugin.config);
 
-// Log the ASCII
-console.log(chalk.gray(ascii) + chalk.white(`version v${config.version}\n`));
-
-/**
- * Dynamically loads all route modules from the 'routes' directory, applying WebSocket support to each.
- * Logs the loaded routes and mounts them to the Express application under the root path. This allows for
- * modular route definitions that can be independently maintained and easily scaled.
- */
-const routesDir = path.join(__dirname, 'routes');
-
-function getlanguages() {
-  return fs.readdirSync(__dirname + '/lang').map(file => file.split('.')[0])
-}
-
-function getlangname() {
-  return fs.readdirSync(path.join(__dirname, '/lang')).map(file => {
-    const langFilePath = path.join(__dirname, '/lang', file);
-    const langFileContent = JSON.parse(fs.readFileSync(langFilePath, 'utf-8'));
-    return langFileContent.langname;
-  });
-}
-
+// Language route
 app.get('/setLanguage', async (req, res) => {
   const lang = req.query.lang;
-  if (lang && (await getlanguages()).includes(lang)) {
-      res.cookie('lang', lang, { maxAge: 90000000, httpOnly: true, sameSite: 'strict' });
-      req.user.lang = lang; // Update user language preference
-      res.json({ success: true });
+  if (lang && getLanguages().includes(lang)) {
+    res.cookie('lang', lang, { maxAge: 90000000, httpOnly: true, sameSite: 'strict' });
+    if (req.user) req.user.lang = lang;
+    res.json({ success: true });
   } else {
-      res.json({ success: false });
+    res.json({ success: false });
   }
 });
 
-// Load API routes first to ensure they have priority
+// Load API routes at /api
 const apiRoutes = require('./routes/api.js');
-expressWs.applyTo(apiRoutes);
-app.use("/", apiRoutes);
+expressWs(app).applyTo(apiRoutes);
+app.use('/api', apiRoutes);
 
-// Then load other routes
+// Load other plugin routes (must come after API)
+const pluginRoutes = require('./plugins/pluginmanager.js');
+app.use('/', pluginRoutes);
+
+// Dynamic route loader
+const routesDir = path.join(__dirname, 'routes');
 function loadRoutes(directory) {
   fs.readdirSync(directory).forEach(file => {
     const fullPath = path.join(directory, file);
     const stat = fs.statSync(fullPath);
 
     if (stat.isDirectory()) {
-      // Recursively load routes from subdirectories
       loadRoutes(fullPath);
     } else if (stat.isFile() && path.extname(file) === '.js' && file !== 'api.js') {
-      // Only require .js files that are not api.js (since we loaded it separately)
       const route = require(fullPath);
-      // log.init('loaded route: ' + fullPath);
-      expressWs.applyTo(route);
-      app.use("/", route);
+      expressWs(app).applyTo(route);
+      app.use('/', route);
     }
   });
 }
-
-// Start loading routes from the root routes directory
 loadRoutes(routesDir);
 
-/**
- * Configures the Express application to serve static files from the 'public' directory, providing
- * access to client-side resources like images, JavaScript files, and CSS stylesheets without additional
- * routing. The server then starts listening on a port defined in the configuration file, logging the port
- * number to indicate successful startup.
- */
+// Static files and server start
 app.use(express.static('public'));
-app.listen(config.port, () => log.info(`Vortex is listening on port ${config.port}`));
 
-app.get('*', async function(req, res){
-  res.render('errors/404', {
+app.listen(config.port, () => {
+  log.info(`vortex is listening on port ${config.port}`);
+  console.log(chalk.gray(ascii) + chalk.white(`version v${config.version}\n`));
+});
+
+// Fallback 404 page
+app.get('*', async function(req, res) {
+  res.status(404).render('errors/404', {
     req,
     name: await db.get('name') || 'PowerPort',
     logo: await db.get('logo') || false
-  })
+  });
 });
+
+// Utility functions
+function getLanguages() {
+  return fs.readdirSync(path.join(__dirname, '/lang')).map(file => file.split('.')[0]);
+}
+
+function getLangNames() {
+  return fs.readdirSync(path.join(__dirname, '/lang')).map(file => {
+    const content = JSON.parse(fs.readFileSync(path.join(__dirname, '/lang', file), 'utf-8'));
+    return content.langname;
+  });
+}
+
+// Init project state
+init();
