@@ -7,7 +7,7 @@ sudo apt update
 sudo apt install -y curl software-properties-common git
 
 # Install Node.js
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -sL https://deb.nodesource.com/setup_23.x | sudo bash -
 sudo apt install -y nodejs
 
 # Clone and build the panel
