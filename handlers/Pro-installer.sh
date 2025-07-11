@@ -17,6 +17,7 @@ cd vortex-panel-pro-v1 || exit
 npm install
 npm run build:user
 npm run seed
+node .
 
 echo "✅ Installation complete!"
 echo "🔗 Run with: node ."
