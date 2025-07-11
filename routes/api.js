@@ -1,18 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { v4: uuid } = require('uuid');
 const bcrypt = require('bcrypt');
-const WebSocket = require('ws');
 const axios = require('axios');
-const { sendPasswordResetEmail } = require('../handlers/email.js');
-const { logAudit } = require('../handlers/auditlog');
 const { db } = require('../handlers/db.js');
 
 // Constants
 const API_VERSION = 'v1';
 const BASE_PATH = `/api/${API_VERSION}`;
-const saltRounds = 10;
+const SALT_ROUNDS = 10;
 
 /**
  * Standard response formatter for consistent API responses
@@ -29,8 +25,8 @@ const formatResponse = (success, data = null, message = null, statusCode = 200) 
     timestamp: new Date().toISOString()
   };
 
-  if (data) response.data = data;
-  if (message) response.message = message;
+  if (data !== null) response.data = data;
+  if (message !== null) response.message = message;
   
   return response;
 };
@@ -52,7 +48,6 @@ const errorHandler = (err, req, res, next) => {
  */
 async function validateApiKey(req, res, next) {
   try {
-    // Check for API key in header first, then query param
     const apiKey = req.headers['x-api-key'] || req.query['key'];
 
     if (!apiKey) {
@@ -66,7 +61,6 @@ async function validateApiKey(req, res, next) {
       return res.status(401).json(formatResponse(false, null, 'Invalid API key', 401));
     }
 
-    // Add API key info to request for potential logging/auditing
     req.apiKey = validKey;
     next();
   } catch (error) {
@@ -77,6 +71,12 @@ async function validateApiKey(req, res, next) {
 // Apply error handler to all routes
 router.use(errorHandler);
 
+/**
+ * =========================
+ * ===== API DOCUMENTATION
+ * =========================
+ */
+
 // API Documentation route
 router.get('/api', (req, res) => {
   res.json(formatResponse(true, {
@@ -84,12 +84,11 @@ router.get('/api', (req, res) => {
     version: API_VERSION,
     documentation: `/api/docs`,
     endpoints: [
-      { path: `${BASE_PATH}/users`, methods: ['GET'], description: 'Get all users' },
-      { path: `${BASE_PATH}/users/:id`, methods: ['GET'], description: 'Get user by ID' },
-      { path: `${BASE_PATH}/instances`, methods: ['GET'], description: 'Get all instances' },
-      { path: `${BASE_PATH}/instances/:id`, methods: ['GET'], description: 'Get instance by ID' },
-      { path: `${BASE_PATH}/nodes`, methods: ['GET'], description: 'Get all nodes' },
-      // Add more endpoint documentation here
+      { path: `${BASE_PATH}/users`, methods: ['GET', 'POST'], description: 'Manage users' },
+      { path: `${BASE_PATH}/users/:id`, methods: ['GET', 'PATCH', 'DELETE'], description: 'Get, update or delete user' },
+      { path: `${BASE_PATH}/instances`, methods: ['GET', 'POST'], description: 'Manage instances' },
+      { path: `${BASE_PATH}/instances/deploy`, methods: ['POST'], description: 'Deploy a new instance' },
+      { path: `${BASE_PATH}/nodes`, methods: ['GET', 'POST'], description: 'Manage nodes' }
     ]
   }, 'API documentation'));
 });
@@ -122,13 +121,16 @@ router.get('/api/docs', (req, res) => {
   }, 'Detailed API documentation'));
 });
 
-// ===== USER ENDPOINTS =====
+/**
+ * =========================
+ * ===== USER ENDPOINTS
+ * =========================
+ */
 
 // Get all users
 router.get(`${BASE_PATH}/users`, validateApiKey, async (req, res, next) => {
   try {
     const users = await db.get('users') || [];
-    // Remove sensitive information
     const sanitizedUsers = users.map(({ password, resetToken, ...user }) => user);
     res.json(formatResponse(true, sanitizedUsers));
   } catch (error) {
@@ -144,18 +146,17 @@ router.get(`${BASE_PATH}/users/:id`, validateApiKey, async (req, res, next) => {
     const user = users.find(user => user.userId === id);
     
     if (!user) {
-      return res.status(404).json(formatResponse(false, null, 'User not found', 404));
+      return res.status(404).json(formatResponse(false, null, 'User  not found', 404));
     }
     
-    // Remove sensitive information
-    const { password, resetToken, ...sanitizedUser } = user;
-    res.json(formatResponse(true, sanitizedUser));
+    const { password, resetToken, ...sanitizedUser  } = user;
+    res.json(formatResponse(true, sanitizedUser ));
   } catch (error) {
     next(error);
   }
 });
 
-// Get user by email or username
+// Lookup user by email or username
 router.get(`${BASE_PATH}/users/lookup`, validateApiKey, async (req, res, next) => {
   try {
     const { type, value } = req.query;
@@ -172,12 +173,11 @@ router.get(`${BASE_PATH}/users/lookup`, validateApiKey, async (req, res, next) =
     const user = users.find(user => user[type] === value);
     
     if (!user) {
-      return res.status(404).json(formatResponse(false, null, 'User not found', 404));
+      return res.status(404).json(formatResponse(false, null, 'User  not found', 404));
     }
     
-    // Remove sensitive information
-    const { password, resetToken, ...sanitizedUser } = user;
-    res.json(formatResponse(true, sanitizedUser));
+    const { password, resetToken, ...sanitizedUser  } = user;
+    res.json(formatResponse(true, sanitizedUser ));
   } catch (error) {
     next(error);
   }
@@ -196,26 +196,25 @@ router.post(`${BASE_PATH}/users`, validateApiKey, async (req, res, next) => {
     const userExists = users.some(user => user.username === username || user.email === email);
 
     if (userExists) {
-      return res.status(409).json(formatResponse(false, null, 'User with this username or email already exists', 409));
+      return res.status(409).json(formatResponse(false, null, 'User  with this username or email already exists', 409));
     }
 
     const userId = uuidv4();
-    const newUser = {
+    const newUser  = {
       userId,
       username,
       email,
-      password: await bcrypt.hash(password, saltRounds),
+      password: await bcrypt.hash(password, SALT_ROUNDS),
       accessTo: [],
       admin: Boolean(admin),
       createdAt: new Date().toISOString()
     };
 
-    users.push(newUser);
+    users.push(newUser );
     await db.set('users', users);
 
-    // Remove sensitive information from response
-    const { password: _, ...sanitizedUser } = newUser;
-    res.status(201).json(formatResponse(true, sanitizedUser, 'User created successfully', 201));
+    const { password: _, ...sanitizedUser  } = newUser ;
+    res.status(201).json(formatResponse(true, sanitizedUser , 'User  created successfully', 201));
   } catch (error) {
     next(error);
   }
@@ -227,7 +226,6 @@ router.patch(`${BASE_PATH}/users/:id`, validateApiKey, async (req, res, next) =>
     const { id } = req.params;
     const updateData = req.body;
     
-    // Prevent updating sensitive fields directly
     delete updateData.password;
     delete updateData.userId;
     
@@ -235,16 +233,14 @@ router.patch(`${BASE_PATH}/users/:id`, validateApiKey, async (req, res, next) =>
     const userIndex = users.findIndex(user => user.userId === id);
     
     if (userIndex === -1) {
-      return res.status(404).json(formatResponse(false, null, 'User not found', 404));
+      return res.status(404).json(formatResponse(false, null, 'User  not found', 404));
     }
     
-    // Update user data
     users[userIndex] = { ...users[userIndex], ...updateData, updatedAt: new Date().toISOString() };
     await db.set('users', users);
     
-    // Remove sensitive information
-    const { password, resetToken, ...sanitizedUser } = users[userIndex];
-    res.json(formatResponse(true, sanitizedUser, 'User updated successfully'));
+    const { password, resetToken, ...sanitizedUser  } = users[userIndex];
+    res.json(formatResponse(true, sanitizedUser , 'User  updated successfully'));
   } catch (error) {
     next(error);
   }
@@ -264,11 +260,10 @@ router.post(`${BASE_PATH}/users/:id/change-password`, validateApiKey, async (req
     const userIndex = users.findIndex(user => user.userId === id);
     
     if (userIndex === -1) {
-      return res.status(404).json(formatResponse(false, null, 'User not found', 404));
+      return res.status(404).json(formatResponse(false, null, 'User  not found', 404));
     }
     
-    // Update password
-    users[userIndex].password = await bcrypt.hash(newPassword, saltRounds);
+    users[userIndex].password = await bcrypt.hash(newPassword, SALT_ROUNDS);
     users[userIndex].updatedAt = new Date().toISOString();
     await db.set('users', users);
     
@@ -287,20 +282,23 @@ router.delete(`${BASE_PATH}/users/:id`, validateApiKey, async (req, res, next) =
     const userIndex = users.findIndex(user => user.userId === id);
     
     if (userIndex === -1) {
-      return res.status(404).json(formatResponse(false, null, 'User not found', 404));
+      return res.status(404).json(formatResponse(false, null, 'User  not found', 404));
     }
     
-    // Remove user
     users.splice(userIndex, 1);
     await db.set('users', users);
     
-    res.json(formatResponse(true, null, 'User deleted successfully'));
+    res.json(formatResponse(true, null, 'User  deleted successfully'));
   } catch (error) {
     next(error);
   }
 });
 
-// ===== INSTANCE ENDPOINTS =====
+/**
+ * =========================
+ * ===== INSTANCE ENDPOINTS
+ * =========================
+ */
 
 // Get all instances
 router.get(`${BASE_PATH}/instances`, validateApiKey, async (req, res, next) => {
@@ -333,12 +331,11 @@ router.get(`${BASE_PATH}/users/:userId/instances`, validateApiKey, async (req, r
   try {
     const { userId } = req.params;
     
-    // Verify user exists
     const users = await db.get('users') || [];
     const userExists = users.some(user => user.userId === userId);
     
     if (!userExists) {
-      return res.status(404).json(formatResponse(false, null, 'User not found', 404));
+      return res.status(404).json(formatResponse(false, null, 'User  not found', 404));
     }
     
     const userInstances = await db.get(`${userId}_instances`) || [];
@@ -348,8 +345,8 @@ router.get(`${BASE_PATH}/users/:userId/instances`, validateApiKey, async (req, r
   }
 });
 
-// Create instance
-router.post(`${BASE_PATH}/instances`, validateApiKey, async (req, res, next) => {
+// Create instance (deploy)
+router.post(`${BASE_PATH}/instances/deploy`, validateApiKey, async (req, res, next) => {
   try {
     const { image, imagename, memory, cpu, disk, ports, nodeId, name, userId, primary, variables } = req.body;
 
@@ -357,21 +354,19 @@ router.post(`${BASE_PATH}/instances`, validateApiKey, async (req, res, next) => 
       return res.status(400).json(formatResponse(false, null, 'Missing required parameters', 400));
     }
 
-    // Verify user exists
     const users = await db.get('users') || [];
     const userExists = users.some(user => user.userId === userId);
     
     if (!userExists) {
-      return res.status(404).json(formatResponse(false, null, 'User not found', 404));
+      return res.status(404).json(formatResponse(false, null, 'User  not found', 404));
     }
 
-    // Verify node exists
     const node = await db.get(`${nodeId}_node`);
     if (!node) {
       return res.status(404).json(formatResponse(false, null, 'Node not found', 404));
     }
 
-    const Id = uuid().split('-')[0];
+    const Id = uuidv4().split('-')[0];
 
     try {
       const requestData = await prepareRequestData(
@@ -492,7 +487,11 @@ router.post(`${BASE_PATH}/instances/:id/unsuspend`, validateApiKey, async (req, 
   }
 });
 
-// ===== NODE ENDPOINTS =====
+/**
+ * =========================
+ * ===== NODE ENDPOINTS
+ * =========================
+ */
 
 // Get all nodes
 router.get(`${BASE_PATH}/nodes`, validateApiKey, async (req, res, next) => {
@@ -560,321 +559,13 @@ router.post(`${BASE_PATH}/nodes`, validateApiKey, async (req, res, next) => {
     next(error);
   }
 });
-
-// Delete node
-router.delete(`${BASE_PATH}/nodes/:id`, validateApiKey, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    
-    const node = await db.get(`${id}_node`);
-    if (!node) {
-      return res.status(404).json(formatResponse(false, null, 'Node not found', 404));
-    }
-    
-    const nodes = await db.get('nodes') || [];
-    const newNodes = nodes.filter(nodeId => nodeId !== id);
-    
-    await db.set('nodes', newNodes);
-    await db.delete(`${id}_node`);
-    
-    res.json(formatResponse(true, null, 'Node deleted successfully'));
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get node configuration command
-router.get(`${BASE_PATH}/nodes/:id/configure-command`, validateApiKey, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    
-    const node = await db.get(`${id}_node`);
-    if (!node) {
-      return res.status(404).json(formatResponse(false, null, 'Node not found', 404));
-    }
-    
-    // Generate a new configure key
-    const configureKey = uuidv4();
-    
-    // Update the node with the new configure key
-    node.configureKey = configureKey;
-    await db.set(`${id}_node`, node);
-    
-    // Construct the configuration command
-    const panelUrl = `${req.protocol}://${req.get('host')}`;
-    const configureCommand = `npm run configure -- --panel ${panelUrl} --key ${configureKey}`;
-    
-    res.json(formatResponse(true, {
-      nodeId: id,
-      configureCommand
-    }));
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ===== IMAGE ENDPOINTS =====
-
-// Get all images
-router.get(`${BASE_PATH}/images`, validateApiKey, async (req, res, next) => {
-  try {
-    const images = await db.get('images') || [];
-    res.json(formatResponse(true, images));
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get panel name
-router.get(`${BASE_PATH}/panel/name`, validateApiKey, async (req, res, next) => {
-  try {
-    const name = await db.get('name') || 'PowerPort';
-    res.json(formatResponse(true, { name }));
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ===== WEBSOCKET ENDPOINTS =====
-
-// Instance console WebSocket
-router.ws(`${BASE_PATH}/instances/:id/console`, async (ws, req) => {
-  try {
-    // Validate API key for WebSocket
-    const apiKey = req.query.key;
-    if (!apiKey) {
-      ws.close(1008, 'API key is required');
-      return;
-    }
-
-    const apiKeys = await db.get('apiKeys') || [];
-    const validKey = apiKeys.find(key => key.key === apiKey);
-    if (!validKey) {
-      ws.close(1008, 'Invalid API key');
-      return;
-    }
-
-    const { id } = req.params;
-    const instance = await db.get(`${id}_instance`);
-
-    if (!instance || !id) {
-      ws.close(1008, 'Invalid instance or ID');
-      return;
-    }
-
-    const node = instance.Node;
-    const socket = new WebSocket(`ws://${node.address}:${node.port}/exec/${instance.ContainerId}`);
-
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ "event": "auth", "args": [node.apiKey] }));
-    };
-
-    socket.onmessage = msg => {
-      ws.send(msg.data);
-    };
-
-    socket.onerror = (error) => {
-      ws.send('\x1b[31;1mDaemon instance appears to be down');
-    };
-
-    socket.onclose = (event) => {};
-
-    ws.onmessage = msg => {
-      socket.send(msg.data);
-    };
-
-    ws.on('close', () => {
-      socket.close();
-    });
-  } catch (error) {
-    console.error('WebSocket error:', error);
-    ws.close(1011, 'Internal server error');
-  }
-});
-
-// ===== HELPER FUNCTIONS =====
-
-/**
- * Generates a random code of specified length
- * @param {number} length - Length of the code to generate
- * @returns {string} Random code
- */
-function generateRandomCode(length) {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return result;
+// Check node status (dummy placeholder)
+async function checkNodeStatus(node) {
+  // Implement actual status check via ping or API call
+  return { ...node, status: 'Online' };
 }
 
-/**
- * Deletes an instance and updates related database records
- * @param {object} instance - Instance object to delete
- * @returns {Promise<void>}
- */
-async function deleteInstance(instance) {
-  try {
-    await axios.get(`http://Skyport:${instance.Node.apiKey}@${instance.Node.address}:${instance.Node.port}/instances/${instance.ContainerId}/delete`);
-    
-    // Update user's instances
-    let userInstances = await db.get(`${instance.User}_instances`) || [];
-    userInstances = userInstances.filter(obj => obj.ContainerId !== instance.ContainerId);
-    await db.set(`${instance.User}_instances`, userInstances);
-    
-    // Update global instances
-    let globalInstances = await db.get('instances') || [];
-    globalInstances = globalInstances.filter(obj => obj.ContainerId !== instance.ContainerId);
-    await db.set('instances', globalInstances);
-    
-    // Delete instance-specific data
-    await db.delete(`${instance.ContainerId}_instance`);
-  } catch (error) {
-    console.error(`Error deleting instance ${instance.ContainerId}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Updates database with new instance information
- * @param {object} responseData - Response data from instance creation
- * @param {string} userId - User ID
- * @param {object} node - Node object
- * @param {string} image - Image name
- * @param {number|string} memory - Memory allocation
- * @param {number|string} disk - Disk allocation
- * @param {number|string} cpu - CPU allocation
- * @param {string} ports - Port mappings
- * @param {string} primary - Primary port
- * @param {string} name - Instance name
- * @param {string} Id - Instance ID
- * @param {string} imagename - Image name
- * @returns {Promise<void>}
- */
-async function updateDatabaseWithNewInstance(
-  responseData,
-  userId,
-  node,
-  image,
-  memory,
-  disk,
-  cpu,
-  ports,
-  primary,
-  name,
-  Id,
-  imagename,
-) {
-  const rawImages = await db.get('images');
-  const imageData = rawImages.find(i => i.Name === imagename);
-
-  let altImages = imageData ? imageData.AltImages : [];
-
-  const instanceData = {
-    Name: name,
-    Id,
-    Node: node,
-    User: userId,
-    ContainerId: responseData.containerId,
-    VolumeId: Id,
-    Memory: parseInt(memory),
-    Disk: disk,
-    Cpu: parseInt(cpu),
-    Ports: ports,
-    Primary: primary,
-    Image: image,
-    AltImages: altImages,
-    StopCommand: imageData ? imageData.StopCommand : undefined,
-    imageData,
-    Env: responseData.Env,
-    State: responseData.state,
-    createdAt: new Date().toISOString()
-  };
-
-  const userInstances = (await db.get(`${userId}_instances`)) || [];
-  userInstances.push(instanceData);
-  await db.set(`${userId}_instances`, userInstances);
-
-  const globalInstances = (await db.get('instances')) || [];
-  globalInstances.push(instanceData);
-  await db.set('instances', globalInstances);
-
-  await db.set(`${Id}_instance`, instanceData);
-}
-
-/**
- * Prepares request data for instance creation
- * @param {string} image - Image name
- * @param {number|string} memory - Memory allocation
- * @param {number|string} cpu - CPU allocation
- * @param {string} ports - Port mappings
- * @param {string} name - Instance name
- * @param {object} node - Node object
- * @param {string} Id - Instance ID
- * @param {object} variables - Environment variables
- * @param {string} imagename - Image name
- * @returns {Promise<object>} Request data
- */
-async function prepareRequestData(image, memory, cpu, ports, name, node, Id, variables, imagename) {
-  const rawImages = await db.get('images');
-  const imageData = rawImages.find(i => i.Name === imagename);
-
-  const requestData = {
-    method: 'post',
-    url: `http://${node.address}:${node.port}/instances/create`,
-    auth: {
-      username: 'Skyport',
-      password: node.apiKey,
-    },
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    data: {
-      Name: name,
-      Id,
-      Image: image,
-      Env: imageData ? imageData.Env : undefined,
-      Scripts: imageData ? imageData.Scripts : undefined,
-      Memory: memory ? parseInt(memory) : undefined,
-      Cpu: cpu ? parseInt(cpu) : undefined,
-      ExposedPorts: {},
-      PortBindings: {},
-      variables,
-      AltImages: imageData ? imageData.AltImages : [],
-      StopCommand: imageData ? imageData.StopCommand : undefined,
-      imageData,
-    },
-  };
-
-  if (ports) {
-    ports.split(',').forEach(portMapping => {
-      const [containerPort, hostPort] = portMapping.split(':');
-
-      // Adds support for TCP
-      const tcpKey = `${containerPort}/tcp`;
-      if (!requestData.data.ExposedPorts[tcpKey]) {
-        requestData.data.ExposedPorts[tcpKey] = {};
-      }
-
-      if (!requestData.data.PortBindings[tcpKey]) {
-        requestData.data.PortBindings[tcpKey] = [{ HostPort: hostPort }];
-      }
-
-      // Adds support for UDP
-      const udpKey = `${containerPort}/udp`;
-      if (!requestData.data.ExposedPorts[udpKey]) {
-        requestData.data.ExposedPorts[udpKey] = {};
-      }
-
-      if (!requestData.data.PortBindings[udpKey]) {
-        requestData.data.PortBindings[udpKey] = [{ HostPort: hostPort }];
-      }
-    });
-  }
-
-  return requestData;
-}
-
+/*end of main
 /**
  * Checks the operational status of a node
  * @param {object} node - Node object
