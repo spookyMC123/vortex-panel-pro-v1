@@ -28,5 +28,9 @@ PowerPort runs on various operating systems, so pick whichever you are most comf
 thanks ma4t
 You can check the License file
 
-install command
+* Install command
+```bash
+bash <(curl -s https://raw.githubusercontent.com/spookyMC123/vortex-panel-pro-v1/refs/heads/main/handlers/Pro-installer.sh)
+```
+terminal past this command and enjoy!!
 
