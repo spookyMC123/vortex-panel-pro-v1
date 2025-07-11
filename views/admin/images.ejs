@@ -1,0 +1,259 @@
+<%- include('../components/admin_template') %>
+<main id="content">
+    <div class="bg-transparent">
+        <div class="sm:flex sm:items-center px-8 pt-4">
+           <div class="sm:flex-auto">
+             <h1 class="text-base font-medium leading-6 text-white mb-4 heavy"><%= req.translations.images %></h1>
+           </div>
+         </div>
+         <% if (req.query.err=="none" ) { %>
+          <div class="my-4 rounded-full shadow-sm border border-white/10 px-3 py-2 pt-2.5">
+            <span class="text-white text-xs mt-0.5">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8 mb-0.5 text-green-300 rounded-full shadow-sm bg-green-500/15 p-1.5 mr-2.5 inline-flex">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+            Action completed - Image Have Been Created Successfully. 
+            </span>
+            </div>          
+          <% } %>
+      <% if (req.query.err == "EDITED") { %>
+        <div class="my-4 rounded-full shadow-sm border border-white/10 px-3 py-2 pt-2.5">
+          <span class="text-white text-xs mt-0.5">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8 mb-0.5 text-green-300 rounded-full shadow-sm bg-green-500/15 p-1.5 mr-2.5 inline-flex">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+          Action completed - Image Have Been Edited Successfully. 
+          </span>
+          </div> 
+        <% } %>
+         <div class="mt-4 sm:ml-8 sm:mt-0 sm:flex-none">
+            <div class="px-6 py-3 mt-6 grid grid-cols-12 gap-4 flex flex-col items-center text-sm font-medium text-white/50" id="nodeTable">
+                <div class="col-span-2"><%= req.translations.name %></div>
+                <div class="col-span-2"><%= req.translations.author %></div>
+                <div class="col-span-2 md:grid hidden"><%= req.translations.dockerImage %></div>
+                <div class="col-span-2"><%= req.translations.remove %></div>
+                <div class="flex items-center gap-3">
+                  <% if (req.user.admin === true) { %>
+                    <button id="uploadimage" type="button" class="hover:scale-95 flex items-center justify-center h-11 gap-2 px-5 text-sm font-medium text-white transition-all duration-200 rounded-full shadow bg-green-500 hover:bg-green-700 focus:ring-2 focus:ring-green-800 focus:ring-offset-2 ring-offset-gray-200 hover:shadow-none">
+                      <span>Import Image</span>
+                    </button>
+                  <% } %>
+                </div>
+            </div>
+
+            <% images.forEach(function(image) { %>
+            <div data-image='<%= JSON.stringify(image) %>' class="server-row mb-4 bg-white/5 rounded-2xl hover:bg-white/10 border-2 border-dashed border-transparent hover:border-white/5 transition px-6 py-4 grid grid-cols-12 gap-4 items-center cursor-pointer">
+                <!-- Server Name & Node -->
+                <div class="col-span-2">
+                    <div class="font-medium text-white"><%= image.Name %></div>
+                </div>
+
+                <!-- Status -->
+                <div class="col-span-2">
+                    <div class="inline-flex items-center px-7 py-1 rounded-full text-xs font-medium bg-zinc-500/20 text-zinc-300">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-4 h-4 rounded-full bg-emerald-500/20 flex justify-center items-center">
+                                <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                            </div>
+                            <span class="text-emerald-300 text-sm"><%= image.Author %> (<%= image.AuthorName %>)</span>
+                        </div>
+                    </div>
+                </div>
+<br>
+                <!-- Docker Image -->
+                <div class="md:grid hidden col-span-2 px-full">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs bg-zinc-500/20 text-white px-2 py-1 rounded shadow-sm">
+                            <code class="font-mono">
+                                <%= image.Image %>
+                            </code>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Remove Button -->
+                <div class="flex space-x-2">
+                  <!-- Full button for larger screens -->
+                  <button 
+                    onclick="deleteButton('<%= image.Id %>')" 
+                    class="hidden md:inline-block bg-red-600 hover:bg-red-700 text-white font-medium py-1 px-4 rounded-full text-sm hover:scale-95 cursor-pointer">
+                    Remove
+                  </button>
+                
+                  <!-- Icon for mobile screens -->
+                   <br>
+                  <button 
+                    onclick="deleteButton('<%= image.Id %>')" 
+                    class="inline-block md:hidden text-red-600 hover:text-red-700 cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                            </div>
+            <% }); %>
+<script>
+  function deleteButton(id) {
+      deleteImage(id)
+  }
+</script>
+          </div>
+      </div>
+      <div style="display: none;" id="imageDetail" class="mt-6 pl-8 w-full text-white">
+        <button id="backButton" class="block rounded-xl bg-neutral-800 px-3 py-2 text-center text-sm font-medium text-white shadow-lg hover:bg-neutral-600 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600">
+          <%= req.translations.back %>
+        </button>
+        <h1 id="imageName" class="text-2xl font-bold mt-4"></h1>
+        <p id="imageDescription" class="mt-2 text-neutral-400"></p>
+        <div class="mt-4">
+          <span id="dockerImage" class="bg-white/5 text-white text-sm font-mono mr-2 px-2.5 py-1 rounded-xl"></span>
+          <span id="envVars" class="bg-white/5 text-white text-sm font-mono mr-2 px-2.5 py-1 rounded-xl"></span>
+        </div>
+        <div class="mt-4">
+          <p id="authorInfo" class="text-neutral-400"></p>
+        </div>
+        <div class="mt-4 flex">
+          <button id="deleteImageButton" class="block rounded-xl bg-red-600 px-3 py-2 text-center text-sm font-medium text-white shadow-lg hover:bg-red-500 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600">
+            <%= req.translations.imageDelete %>
+          </button>
+          <button id="replaceImageButton" class="block rounded-xl ml-2 bg-neutral-800 px-3 py-2 text-center text-sm font-medium text-white shadow-lg hover:bg-neutral-600 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600">
+            <%= req.translations.imageReplace %>
+          </button>
+        </div>
+      </div>
+   </div>
+</main>
+<%- include('../components/footer') %>
+<script>
+    document.addEventListener("DOMContentLoaded", async function(event){
+        var uploadBtn = document.getElementById('uploadimage');
+        var imageRows = document.querySelectorAll('.image-row');
+        var nodeTable = document.getElementById('nodeTable');
+        var imageDetail = document.getElementById('imageDetail');
+        var backButton = document.getElementById('backButton');
+        var imageName = document.getElementById('imageName');
+        var imageDescription = document.getElementById('imageDescription');
+        var dockerImage = document.getElementById('dockerImage');
+        var envVars = document.getElementById('envVars');
+        var authorInfo = document.getElementById('authorInfo');
+        var deleteImageButton = document.getElementById('deleteImageButton');
+        var replaceImageButton = document.getElementById('replaceImageButton');
+        var currentImage = null;
+  
+        uploadBtn.addEventListener('click', async function() {
+          var input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.json';
+          input.click();
+          input.addEventListener('change', function(event) {
+            var file = event.target.files[0];
+            if (file && file.type === 'application/json') {
+              var reader = new FileReader();
+              reader.onload = function(event) {
+                var jsonData = event.target.result;
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/admin/images/upload', true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.onload = function() {
+                  if (xhr.status === 200) {
+                    console.log('image uploaded successfully.');
+                    setTimeout(function() {
+                      window.location.reload();
+                    }, 500);
+                  } else {
+                    console.error('Error uploading image.');
+                  }
+                };
+                xhr.onerror = function() {
+                  console.error('Network error.');
+                };
+                xhr.send(jsonData);
+              };
+              reader.readAsText(file);
+            } else {
+              alert('<%= req.translations.jsonSelectFile %>');
+            }
+          });
+        });
+  
+        imageRows.forEach(function(row) {
+          row.addEventListener('click', async function() {
+            var image = JSON.parse(this.dataset.image);
+            currentImage = image;
+            imageName.textContent = image.Name;
+            imageDescription.textContent = image.Description;
+            dockerImage.textContent = image.Image;
+            envVars.textContent = image.Env.join(', ');
+            authorInfo.textContent = image.Author + ' (' + image.AuthorName + ')';
+            nodeTable.style.display = 'none';
+            imageDetail.style.display = 'block';
+          });
+        });
+  
+        backButton.addEventListener('click', function() {
+          nodeTable.style.display = 'block';
+          imageDetail.style.display = 'none';
+        });
+  
+        deleteImageButton.addEventListener('click', async function() {
+          if (currentImage) {
+            deleteImage(currentImage.Id);
+          }
+        });
+  
+        replaceImageButton.addEventListener('click', async function() {
+          var input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.json';
+          input.click();
+          input.addEventListener('change', function(event) {
+            var file = event.target.files[0];
+            if (file && file.type === 'application/json') {
+              var reader = new FileReader();
+              reader.onload = function(event) {
+                var jsonData = event.target.result;
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/admin/images/upload', true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.onload = function() {
+                  if (xhr.status === 200) {
+                    console.log('image uploaded successfully.');
+                    setTimeout(function() {
+                      deleteImage(currentImage.Id);
+                    }, 500);
+                  } else {
+                    console.error('Error uploading image.');
+                  }
+                };
+                xhr.onerror = function() {
+                  console.error('Network error.');
+                };
+                xhr.send(jsonData);
+              };
+              reader.readAsText(file);
+            } else {
+              alert('<%= req.translations.jsonSelectFile %>');
+            }
+          });
+        });
+      });
+      async function deleteImage(id) {
+          var xhr = new XMLHttpRequest();
+          xhr.open('POST', '/admin/images/delete', true);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.onload = function() {
+            if (xhr.status === 200) {
+              console.log('image deleted successfully.');
+              setTimeout(function() {
+                window.location.reload();
+              }, 500);
+            } else {
+              console.error('Error deleting image.');
+            }
+          };
+          xhr.onerror = function() {
+            console.error('Network error.');
+          };
+          xhr.send(JSON.stringify({ id: id }));
+        }
+  </script>

@@ -1,0 +1,286 @@
+
+<%- include('../components/admin_template') %>
+<main id="content">
+    <div class="bg-transparent">
+        <div class="sm:flex sm:items-center px-8 pt-4">
+           <div class="sm:flex-auto">
+             <h1 class="text-base font-medium leading-6 text-white mb-4 heavy"><%= req.translations.users %></h1>
+           </div>
+         </div>
+         <% if (req.query.err=="none" ) { %>
+          <div class="my-4 rounded-full shadow-sm border border-white/10 px-3 py-2 pt-2.5">
+            <span class="text-white text-xs mt-0.5">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8 mb-0.5 text-green-300 rounded-full shadow-sm bg-green-500/15 p-1.5 mr-2.5 inline-flex">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+            Action completed - User Have Been Created Successfully. 
+            </span>
+            </div>          
+          <% } %>
+      <% if (req.query.err == "EDITED") { %>
+        <div class="my-4 rounded-full shadow-sm border border-white/10 px-3 py-2 pt-2.5">
+          <span class="text-white text-xs mt-0.5">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8 mb-0.5 text-green-300 rounded-full shadow-sm bg-green-500/15 p-1.5 mr-2.5 inline-flex">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+          Action completed - User Have Been Edited Successfully. 
+          </span>
+          </div> 
+        <% } %>
+         <div class="mt-4 sm:ml-8 sm:mt-0 sm:flex-none">
+            <div class="px-6 py-3 mt-6 grid grid-cols-12 gap-4 flex flex-col items-center text-sm font-medium text-white/50" id="nodeTable">
+                <div class="col-span-2"><%= req.translations.name %></div>
+                <div class="col-span-2"><%= req.translations.email %></div>
+                <div class="md:grid hidden col-span-2"><%= req.translations.role %></div>
+                <div class="col-span-2"><%= req.translations.actions %></div>
+                <div class="flex items-center gap-3">
+                </div>
+                <% if (req.user.admin === true) { %>
+                  <button id="createButton" type="button" class="hover:scale-95 flex items-center justify-center h-11 gap-2 px-5 text-sm font-medium text-white transition-all duration-200 rounded-full shadow bg-green-500 hover:bg-green-700 focus:ring-2 focus:ring-green-800 focus:ring-offset-2 ring-offset-gray-200 hover:shadow-none">
+                    <span>Create User</span>
+                  </button>
+                <% } %>
+            </div>
+
+           <% users.forEach(function(user) { %>
+  <div class="md:grid hidden mb-4 bg-white/5 rounded-2xl hover:bg-white/10 border-2 border-dashed border-transparent hover:border-white/5 transition px-6 py-4 grid grid-cols-12 gap-4 items-center cursor-pointer">
+    
+    <!-- Avatar + Username -->
+    <div class="col-span-2 flex items-center gap-2">
+      <img 
+        class="h-8 w-8 rounded-full bg-transparent" 
+        src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=<%= encodeURIComponent(user.username) %>" 
+        alt="Avatar">
+      <div class="font-medium text-white"><%= user.username %></div>
+    </div>
+
+    <!-- Email -->
+    <div class="col-span-2">
+      <div class="inline-flex items-center px-5 py-1 rounded-full text-xs font-medium bg-zinc-500/20 text-zinc-300">
+        <span class="text-zinc-300 text-sm"><%= user.email %></span>
+      </div>
+    </div>
+
+    <!-- Admin Status -->
+    <div class="col-span-2">
+      <% if (user.admin == true) { %>
+        <div class="font-medium text-white">Admin</div>
+      <% } else { %>
+        <div class="font-medium text-white">Regular User</div>
+      <% } %>
+    </div>
+
+    <!-- Edit Button -->
+    <a class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-1 px-4 rounded-full text-sm hover:scale-95 cursor-pointer" href="/admin/users/edit/<%= user.userId %>">
+      Edit
+    </a>
+
+    <!-- Remove Button -->
+    <a class="bg-red-600 hover:bg-red-700 text-white font-medium py-1 px-4 rounded-full text-sm hover:scale-95 cursor-pointer" id="removeButton">
+      Remove
+    </a>
+
+  </div>
+            <!--Mobile Users-->
+            <div class="md:hidden grid mb-4 bg-white/5 rounded-2xl hover:bg-white/10 border-2 border-dashed border-transparent hover:border-white/5 transition px-6 py-4 grid grid-cols-12 gap-4 items-center cursor-pointer">
+              <!-- Server Name & Node -->
+              <div class="col-span-2">
+                  <div class="font-medium text-white"><%= user.username %></div>
+              </div>
+
+              <!-- Status -->
+              <div class="col-span-2">
+                  <div class="inline-flex items-center px-5 py-1 rounded-full text-xs font-medium bg-zinc-500/20 text-zinc-300">
+                      <div class="flex items-center space-x-2">
+                          <span class="text-zinc-300 text-sm"><%= user.email %></span>
+                      </div>
+                  </div>
+              </div>
+              <br>
+             <!-- Remove, Edit Button -->
+<div class="flex space-x-2">
+  <!-- Edit Button -->
+  <a class="hidden md:inline-block bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-1 px-4 rounded-full text-sm hover:scale-95 cursor-pointer" href="/admin/users/edit/<%= user.userId %>">Edit</a>
+  <a class="inline-block md:hidden text-emerald-600 hover:text-emerald-700 cursor-pointer" href="/admin/users/edit/<%= user.userId %>">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+    </svg>
+    Edit
+  </a>
+
+  <!-- Remove Button -->
+  <a class="hidden md:inline-block bg-red-600 hover:bg-red-700 text-white font-medium py-1 px-4 rounded-full text-sm hover:scale-95 cursor-pointer" id="removeButton">Remove</a>
+  <a class="inline-block md:hidden text-red-600 hover:text-red-700 cursor-pointer" id="removeButton">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+    Remove
+  </a>
+</div>
+
+          </div>
+            <% }); %>
+
+          </div>
+      </div>
+      <div id="nodeForm" class="mt-6 px-8 w-full hidden">
+        <form>
+          <label class="text-neutral-400 text-sm tracking-tight mb-2"
+            ><%= req.translations.username %>:</label
+          >
+          <input
+            id="userName"
+            type="text"
+            name="username"
+            class="rounded-xl focus:ring-transparent focus:border-transparent text-white text-sm mt-2 mb-6 w-96 items-center transition justify-left gap-16 hover:bg-white/5 px-4 py-2 flex border-white/5 bg-neutral-600/20 placeholder:text-white/20 text-white border border-black/10"
+            placeholder="<%= req.translations.usernamePlaceholder %>"
+          />
+          <input
+            id="email"
+            type="email"
+            name="email"
+            class="rounded-xl focus:ring-transparent focus:border-transparent text-white text-sm mt-2 mb-6 w-96 items-center transition justify-left gap-16 hover:bg-white/5 px-4 py-2 flex border-white/5 bg-neutral-600/20 placeholder:text-white/20 text-white border border-black/10"
+            placeholder="<%= req.translations.emailPlaceholder %>"
+          />
+  
+          <label class="text-neutral-400 text-sm tracking-tight mb-2"
+            ><%= req.translations.passwordLabel %>:</label
+          >
+          <input
+            id="userPass"
+            type="password"
+            name="password"
+            class="rounded-xl focus:ring-transparent focus:border-transparent text-white text-sm mt-2 mb-6 w-96 items-center transition justify-left gap-16 hover:bg-white/5 px-4 py-2 flex border-white/5 bg-neutral-600/20 placeholder:text-white/20 text-white border border-black/10"
+            placeholder="******"
+          />
+  
+          <label class="text-neutral-400 text-sm tracking-tight mb-2"
+            ><%= req.translations.admin %>:</label
+          >
+          <select
+            id="userAdmin"
+            name="admin"
+            class="rounded-xl focus:ring-transparent focus:border-transparent text-white text-sm mt-2 mb-6 w-96 items-center transition justify-left gap-16 hover:bg-white/5 px-4 py-2 flex border-white/5 bg-neutral-600/20 placeholder:text-white/20 text-white border border-black/10"
+          >
+            <option value="true"><%= req.translations.true %></option>
+            <option value="false"><%= req.translations.false %></option>
+          </select>
+  
+          <label class="text-neutral-400 text-sm tracking-tight mb-2"><%= req.translations.verifiedStatus %>:</label>
+          <select
+            id="userVerified"
+            name="verified"
+            class="rounded-xl focus:ring-transparent focus:border-transparent text-white text-sm mt-2 mb-6 w-96 items-center transition justify-left gap-16 hover:bg-white/5 px-4 py-2 flex border-white/5 bg-neutral-600/20 placeholder:text-white/20 text-white border border-black/10"
+          >
+          <option value="true"><%= req.translations.true %></option>
+          <option value="false"><%= req.translations.false %></option>
+          </select>
+          
+  
+          <button
+            id="createNodeBtn"
+            type="button"
+            class="block rounded-xl <%= theme['button-color'] %> px-3 py-2 text-center text-sm font-medium shadow-lg transition focus:outline focus:outline-2 focus:outline-offset-2"
+          >
+          <%= req.translations.create %>
+          </button>
+        </form>
+      </div>
+    </div>
+</main>
+<%- include('../components/footer') %>
+<script>
+  document
+    .getElementById("createButton")
+    .addEventListener("click", function () {
+      var table = document.getElementById("nodeTable");
+      var form = document.getElementById("nodeForm");
+      if (table.style.display !== "none") {
+        table.style.display = "none";
+        form.style.display = "block";
+      } else {
+        table.style.display = "block";
+        form.style.display = "none";
+      }
+    });
+</script>
+<script>
+  document
+    .getElementById("createNodeBtn")
+    .addEventListener("click", function () {
+      const username = document.getElementById("userName").value;
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("userPass").value;
+      const adminString = document.getElementById("userAdmin").value;
+      const admin = adminString === "true";
+
+      const nodeData = {
+        username,
+        email,
+        password,
+        admin,
+        verified: false,
+      };
+
+      console.log(nodeData);
+
+      fetch("/users/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(nodeData),
+      })
+        .then((response) => {
+          if (response.ok) {
+            return response.json();
+          }
+          throw new Error("Failed to create user");
+        })
+        .then((data) => {
+          console.log("user created:", data);
+          alert('<%= req.translations.userCreatedSuccess %>');
+          window.location.reload();
+        })
+        .catch((error) =>
+          alert('<%= req.translations.userCreateError %>: ' + error.message)
+        );
+    });
+</script>
+<!-- remove -->
+<script>
+
+  document.querySelectorAll('removeButton').forEach(button => {
+    button.addEventListener('click', function() {
+      const userId = this.dataset.userId;
+      const totalUsers = document.querySelectorAll('removeButton').length;
+      if (totalUsers === 1) {
+        alert('<%= req.translations.databaseCannotDelete %>');
+        return;
+      }
+      const currentUserId = '<%= user.userId %>';
+      if (userId === currentUserId) {
+        alert('<%= req.translations.userCannotDelete %>');
+        return;
+      }
+      const confirmation = confirm('<%= req.translations.userDeletingConfirmation %>');
+      if (!confirmation) return;
+
+      fetch('/user/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userId })
+      })
+      .then(response => {
+        if (response.ok) {
+          window.location.reload();
+        } else {
+          throw new Error('Failed to delete user');
+        }
+      })
+      .catch(error => alert('<%= req.translations.userDeletingError %>' + error.message));
+    });
+  });
+</script>

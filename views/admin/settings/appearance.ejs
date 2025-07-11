@@ -1,0 +1,72 @@
+<%- include('../../components/admin_template') %>
+
+<main id="content">
+   <div class="px-4 sm:px-6 lg:px-8">
+      <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2">
+         <div class="ard rounded-xl p-6 bg-white/5 shadow-2xl overflow-hidden transition-transform transform hover:scale-105 duration-300">
+            <div class="flex items-center justify-between">
+               <div class="min-w-0 flex-1">
+                  <h2 class="text-lg font-semibold text-white tracking-tight">
+                     <span class="flex flex-row mb-4"><%= req.translations.settings %></span>
+                     
+                  </h2>
+                  <form action="/admin/settings/change/name" method="POST" class="mt-5">
+                     <div class="flex flex-col sm:flex-row justify-between">
+                        <div class="w-full sm:w-1/2 sm:mr-4 mb-4 sm:mb-0">
+                           <label for= "name" class="text-white text-sm tracking-tight mb-2"><%= req.translations.panelName %></label>
+                           <input id="name" type="text" name="name" 
+                           class="rounded-xl focus:ring-blue-500 focus:border-blue-500 text-sm mt-1 mb-0 w-full transition duration-200 hover:bg-gray-700 px-4 py-2 border border-gray-600 bg-gray-700 placeholder-white text-white"/>
+                        </div>
+                        
+                     </div>
+                     <br>
+                     <button type="submit" id="Save-Name" class="clex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-5 rounded-lg transition duration-300">
+                      Save Name
+                    </button>
+                  </form>
+
+                  
+                  <div id="changelogoform" class="mt-6">
+                     <label for="name" class="text-white text-sm tracking-tight mb-2"><%= req.translations.panelLogo %></label>
+                     <form action="/admin/settings/change/logo" class="mt-4" method="POST" enctype="multipart/form-data">
+                        <div class="flex items-center mb-4">
+                           <input id="useImage" name="useImage" type="checkbox" class="w-4 h-4 text-neutral-600 bg-transparent border-white/5 rounded focus:ring-neutral-500 focus:ring-2">
+                           <label for="useImage" class="ml-2 text-sm font-medium text-white"><%= req.translations.image %></label>
+                        </div>
+                        <div id="imageUploadBox" class="hidden mb-4">
+                           <label for="logo" class="text-white text-sm tracking-tight mb-2"><%= req.translations.uploadLogo %></label>
+                           <input type="file" name="logo" id="logo" accept="image/*" class="block w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-white/5 file:text-neutral-300 hover:file:bg-white/10 transition">
+                        </div>
+                        <input type="hidden" name="type" id="logoType" value="none">
+                        <br>
+                     <button type="submit" id="logoButton" class="clex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-5 rounded-lg transition duration-300">
+                        <%= req.translations.removeLogo %>
+                    </button>
+                     </form>
+                  </div>
+                  
+               </div>
+            </div>
+         </div>
+      </dl>
+   </div>
+</main>
+
+<script>
+   document.getElementById('useImage').addEventListener('change', function() {
+     const imageUploadBox = document.getElementById('imageUploadBox');
+     const logoButton = document.getElementById('logoButton');
+     const logoType = document.getElementById('logoType');
+     
+     if (this.checked) {
+       imageUploadBox.classList.remove('hidden');
+       logoButton.textContent = '<%= req.translations.saveNewLogo %>';
+       logoType.value = 'image';
+     } else {
+       imageUploadBox.classList.add('hidden');
+       logoButton.textContent = '<%= req.translations.removeLogo %>';
+       logoType.value = 'none';
+     }
+   });
+</script>
+<%- include('../../components/footer') %>

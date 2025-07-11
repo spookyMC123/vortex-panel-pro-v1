@@ -1,0 +1,379 @@
+<%- include('components/template') %>
+<body class="bg-[#010103] text-gray-300" style="font-family: 'Inter'" x-data="{ sidebarOpen: false }" @keydown.escape="sidebarOpen = false"></body>
+<!-- Main Content -->
+<main class="flex-grow container mx-auto px-4 py-8">
+   <div class="flex justify-between items-center w-full mx-auto pb-4">
+       <!-- Welcome text and subtext on the left -->
+       <div class="flex flex-col">
+           <h1 class="text-xl font-semibold mb-0.5 heavy">Account information</h1>
+           <p class="text-gray-400 text-md">View and manage the credentials to your account.</p>
+       </div>
+
+       <!-- Breadcrumbs on the right -->
+       <nav aria-label="Breadcrumb" class="inline-flex py-2 px-4 rounded-xl bg-white/5 transition-colors duration-200">
+           <ol role="list" class="flex items-center space-x-2">
+               <li>
+                   <a href="#_" class="text-sm flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition-colors duration-200" aria-current="false">
+                       <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler size-4 icons-tabler-outline icon-tabler-home">
+                           <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                           <path d="M5 12l-2 0l9 -9l9 9l-2 0"></path>
+                           <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"></path>
+                           <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"></path>
+                       </svg>
+                       <span>Home</span>
+                   </a>
+               </li>
+               <li class="flex items-center">
+                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-chevron-right size-4 text-zinc-400">
+                       <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                       <path d="M9 6l6 6l-6 6"></path>
+                   </svg>
+               </li>
+               <li>
+                   <a href="#_" class="text-sm flex items-center gap-2 font-medium text-white/80 hover:text-white transition-colors duration-200" aria-current="page">
+                       Account
+                   </a>
+               </li>
+           </ol>
+       </nav>
+   </div>
+
+   <!-- Credentials Content -->
+   <div class="mt-12 flex justify-center">
+       <div class="text-center w-full max-w-md">
+           <div class="mb-6">
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 bg-white/5 p-1.5 rounded-xl border border-white/10 mx-auto text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+               </svg>
+           </div>
+           <h2 class="text-2xl font-bold mb-4">Credentials</h2>
+           <p class="text-gray-400 mb-6">Use these credentials to access certain actions .</p>
+           <!-- Current Credentials -->
+           <div class="mb-8">
+               <div class="mb-4">
+                   <input value="<%= user.email %>" class="transition ease-in-out delay-100 shadow-sm block w-full sm:text-sm rounded-lg bg-white/5 text-white border-white/5 focus:ring-green-500 focus:border-green-500" disabled>
+               </div>       
+            </div>
+           <!-- Password Change Section -->
+           <div class="border-t border-white/15 pt-8">
+               <h3 class="text-lg font-semibold mb-4">Set a new password</h3>
+               <form id="change-password-form" action="/change-password" method="POST" class="space-y-4">
+                   <div>
+                       <input type="password" id="currentPassword" placeholder="Current Password" class="transition ease-in-out delay-100 shadow-sm block w-full sm:text-sm rounded-lg bg-white/5 placeholder-white/60 text-white border-white/5 focus:ring-green-500 focus:border-green-500">
+                   </div>
+                   <div>
+                       <input type="password" id="newPassword" placeholder="New Password" class="transition ease-in-out delay-100 shadow-sm block w-full sm:text-sm rounded-lg placeholder-white/60 bg-white/5 text-white border-white/5 focus:ring-green-500 focus:border-green-500">
+                   </div>
+                   <p class="text-sm text-white/70 text-left py-2.5">
+                       Password must contain:
+                       <br>• At least 8 characters
+                       <br>• One uppercase letter
+                       <br>• One lowercase letter
+                       <br>• One number
+                   </p>
+                   <div class="flex justify-between gap-4 mt-6">
+                     
+                       <button type="submit" class="flex-1 font-medium bg-green-500 text-white px-4 py-2 rounded-xl text-sm hover:scale-95 hover:bg-green-600 transition">
+                        <%= req.translations.update_password %>
+                       </button>
+                   </div>
+               </form>
+           </div>
+       </div>
+   </div>
+</main>
+<style>
+   #username-feedback, #current-password-feedback {
+   transition: opacity 0.3s ease-in-out;
+   display: inline-block; /* Display as inline block */
+   min-width: fit-content; /* Set minimum width to fit the content */
+   max-width: 100%; /* Set maximum width to 100% of the parent container */
+   }
+</style>
+<script>
+   document.addEventListener('DOMContentLoaded', () => {
+       const currentPasswordInput = document.getElementById('currentPassword');
+       const newPasswordInput = document.getElementById('newPassword');
+       const currentPasswordFeedback = document.getElementById('current-password-feedback');
+       let currentPasswordValue = '';
+       let currentPasswordTimeoutId;
+       let controller;
+       let isLoading = true;
+   
+       function showLoadingAnimation() {
+           currentPasswordFeedback.innerHTML = `
+           <span id="current-password-status">
+                  <svg class="animate-spin h-3 w-3  inline-flex mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg> <span id="current-password-feedback-message"><%= req.translations.checking %></span>
+               </span>
+           `;
+       }
+   
+       function clearPasswordFeedback() {
+           currentPasswordFeedback.innerHTML = ''; // Clear feedback message
+           currentPasswordFeedback.style.display = 'none'; // Hide the feedback div
+           newPasswordInput.disabled = true; // Disable new password input
+           newPasswordInput.value = ''; // Clear the new password input
+       }
+   
+       // Call clearPasswordFeedback function to remove feedback for password when the page loads
+       clearPasswordFeedback();
+   
+       currentPasswordInput.addEventListener('input', () => {
+           // Disable the new password input when the current password changes
+           newPasswordInput.disabled = true;
+           newPasswordInput.value = ''; // Clear the new password input
+           // Store the new current password value
+           currentPasswordValue = currentPasswordInput.value;
+       });
+   
+       currentPasswordInput.addEventListener('input', async () => {
+           clearTimeout(currentPasswordTimeoutId);
+           if (!isLoading) {
+               showLoadingAnimation();
+               isLoading = true;
+           }
+   
+           if (controller) {
+               controller.abort(); // Abort previous request if it exists
+           }
+   
+           controller = new AbortController(); // Create a new AbortController
+           const signal = controller.signal; // Get the signal from the controller
+   
+           currentPasswordTimeoutId = setTimeout(async () => {
+               const currentPassword = currentPasswordValue;
+   
+               // Check if the current password is blank
+               if (currentPassword.trim() === '') {
+                   clearPasswordFeedback();
+                   isLoading = false; // Set isLoading to false if the input is blank
+                   return;
+               }
+   
+               try {
+                   // Show loading animation
+   
+                   const response = await fetch('/validate-password', {
+                       method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/json'
+                       },
+                       body: JSON.stringify({ currentPassword }),
+                       signal // Pass the signal to the request
+                   });
+   
+                   if (response.ok) {
+                       const data = await response.json();
+                       if (data.valid) {
+                           currentPasswordFeedback.innerHTML = `<span id="current-password-status"><%= req.translations.correctPassword %></span>`;
+                       } else {
+                           currentPasswordFeedback.innerHTML = `<span id="current-current-status"><%= req.translations.incorrectPassword %></span>`;
+                       }
+                       
+                       // Enable or disable the new password input based on validation result
+                       newPasswordInput.disabled = !data.valid;
+                       currentPasswordFeedback.style.display = 'inline-block'; // Show the feedback div
+                       isLoading = false;
+                   } else {
+                       const errorMessage = await response.text();
+                       currentPasswordFeedback.innerText = `<%= req.translations.updatingUsernameError %>`;
+                       currentPasswordFeedback.style.color = 'red';
+                       currentPasswordFeedback.style.display = 'inline-block'; // Show the feedback div
+                   }
+               } catch (error) {
+                   console.error('Error validating password:', error);
+                   currentPasswordFeedback.innerText = `<%= req.translations.validadingpasswordError %>`;
+                   currentPasswordFeedback.style.color = 'red';
+                   currentPasswordFeedback.style.display = 'inline-block'; // Show the feedback div
+               }
+           }, 500); // Adjust delay time as needed
+       });
+   
+       // Trigger initial check when the page is loaded
+       if (currentPasswordInput.value.trim() !== '') {
+           checkCurrentPassword();
+       } else {
+           isLoading = false; // Set isLoading to false if the input is blank initially
+       }
+   });
+</script>
+
+<script>
+   document.addEventListener('DOMContentLoaded', () => {
+       const currentPasswordInput = document.getElementById('currentPassword');
+       const newPasswordInput = document.getElementById('newPassword');
+       const changePasswordBtn = document.querySelector('#change-password-form button[type="submit"]');
+   
+       // Function to check if the "Change Password" button should be enabled or disabled
+       function toggleChangePasswordButton() {
+           if (currentPasswordInput.value.trim() !== '' && newPasswordInput.value.trim() !== '') {
+               changePasswordBtn.disabled = false;
+           } else {
+               changePasswordBtn.disabled = true;
+           }
+       }
+   
+       // Event listener for input on current password field
+       currentPasswordInput.addEventListener('input', () => {
+           toggleChangePasswordButton();
+       });
+   
+       // Event listener for input on new password field
+       newPasswordInput.addEventListener('input', () => {
+           toggleChangePasswordButton();
+       });
+   
+       // Trigger initial check when the page is loaded
+       toggleChangePasswordButton();
+   });
+</script>
+
+<script>
+   document.addEventListener('DOMContentLoaded', () => {
+      const usernameInput = document.getElementById('username');
+      const changeUsernameBtn = document.getElementById('change-username-btn');
+      const usernameFeedback = document.getElementById('username-feedback');
+      let isLoading = false;
+   
+      // Function to display loading animation
+      function showLoadingAnimation() {
+         usernameFeedback.innerHTML = `
+           <span id="username-status" class="flex items-center">
+<img src="/assets/spinner.png" alt="Loading" style="width: 32px; height: 32px;" class="animate-spin inline-flex mr-1" />
+   <span id="username-feedback-message"><%= req.translations.checking %></span>
+</span>
+
+         `;
+      }
+   
+      // Function to check if a username exists
+      let timeoutId; // Variable to store the timeout ID for debouncing
+   
+      async function checkUsername() {
+         const username = usernameInput.value.trim().toLowerCase(); // Convert input to lowercase
+   
+         // Hide feedback elements if username is empty
+         if (username === '') {
+            usernameFeedback.style.display = 'none';
+            changeUsernameBtn.disabled = true;
+            return;
+         } else {
+            usernameFeedback.style.display = 'inline-block';
+         }
+   
+         // Clear previous timeout to prevent multiple requests
+         clearTimeout(timeoutId);
+   
+         // Show loading animation if not already loading
+         if (!isLoading) {
+            showLoadingAnimation();
+            isLoading = true;
+         }
+   
+         // Set timeout to wait for user to finish typing
+         timeoutId = setTimeout(async () => {
+            // Check if username already exists
+            const response = await fetch(`/check-username?username=${encodeURIComponent(username)}`);
+            const data = await response.json();
+   
+            // Update UI based on response
+            if (data.exists) {
+               usernameFeedback.innerHTML = `<span id="username-status"><%= req.translations.usernameTaken %></span>`;
+               changeUsernameBtn.disabled = true;
+            } else {
+               usernameFeedback.innerHTML = `<span id="username-status"><%= req.translations.usernameIsNotTaken %></span>`;
+               changeUsernameBtn.disabled = false;
+            }
+            isLoading = false;
+         }, 500); // Adjust delay time as needed
+      }
+   
+      // Event listener for input on username field with debouncing
+      usernameInput.addEventListener('input', () => {
+         clearTimeout(timeoutId); // Clear previous timeout
+         timeoutId = setTimeout(checkUsername, 500); // Set new timeout with debouncing delay
+      });
+   
+      // Event listener for form submission to prevent default behavior
+      document.getElementById('change-username-form').addEventListener('submit', (event) => {
+         event.preventDefault();
+      });
+   
+      // Clear feedback elements and disable button when username input is cleared
+      usernameInput.addEventListener('change', () => {
+         if (usernameInput.value.trim() === '') {
+            usernameFeedback.style.display = 'none';
+            usernameFeedbackMessage.innerText = '';
+            changeUsernameBtn.disabled = true;
+         }
+      });
+   
+      // Trigger initial check when the page is loaded
+      checkUsername();
+   
+      async function handleUsernameUpdate(event) {
+         event.preventDefault();
+   
+         const currentUsername = '<%= user.username %>'; // Get current username from server-side template
+         const newUsername = usernameInput.value.trim(); // Get new username from input field
+   
+         try {
+            // Send a POST request to the server to update the username
+            const response = await fetch('/update-username', {
+               method: 'POST',
+               headers: {
+                  'Content-Type': 'application/json'
+               },
+               body: JSON.stringify({ currentUsername, newUsername })
+            });
+   
+            if (response.ok) {
+               // Username updated successfully
+               alert('<%= req.translations.usernameUpdatedSuccess %>');
+               window.location.href = '/login?err=UpdatedCredentials';
+               // Optionally, you can redirect the user to another page or update the UI
+            } else {
+               // Error updating username
+               const errorMessage = await response.text();
+               alert(errorMessage);
+            }
+         } catch (error) {
+            console.error('Error updating username:', error);
+            alert('<%= req.translations.updatingUsernameError %>');
+         }
+      }
+   
+      // Add event listener to the form for submit event
+      document.getElementById('change-username-form').addEventListener('submit', handleUsernameUpdate);
+   });
+   </script>
+   <script>
+      function copyPassword() {
+          const passwordInput = document.getElementById('current-password');
+          navigator.clipboard.writeText(passwordInput.value);
+          showStatus('Password copied to clipboard!', 'success');
+      }
+  
+      function showStatus(message, type) {
+          const statusDiv = document.getElementById('status-message');
+          const statusText = statusDiv.querySelector('p');
+          statusDiv.classList.remove('hidden');
+          statusText.textContent = message;
+          
+          if (type === 'success') {
+              statusText.classList.add('bg-green-100', 'text-green-800');
+              statusText.classList.remove('bg-red-100', 'text-red-800');
+          } else {
+              statusText.classList.add('bg-red-100', 'text-red-800');
+              statusText.classList.remove('bg-green-100', 'text-green-800');
+          }
+  
+          setTimeout(() => {
+              statusDiv.classList.add('hidden');
+          }, 3000);
+      }
+  </script>
+   </body>

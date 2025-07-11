@@ -1,0 +1,214 @@
+<%- include('components/template') %>
+<main class="container flex-grow px-4 py-12 mx-auto font-space text-white">
+  <!-- Background layers like login.ejs -->
+  <div class="flex items-center justify-between w-full pb-6 mx-auto">
+    <div class="flex flex-col">
+      <h1 class="text-3xl font-bold mb-1">Instances</h1>
+      <p class="text-gray-300 text-sm">Overview of your servers on <%= name %>.</p>
+    </div>
+    <script>
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+
+      function updateRamUsage(stats, instanceId) {
+        const ramStatsUsage = stats.memory_stats.usage || 0;
+        const ramStatsLimit = stats.memory_stats.limit || 0;
+
+        const ramUsageRaw = ramStatsUsage / 1024 / 1024 || 0;
+        const ramLimitRaw = ramStatsLimit / 1024 / 1024 || 0;
+        const ramUsagePercent = (ramLimitRaw > 0) ? ((ramUsageRaw / ramLimitRaw) * 100).toFixed(2) : '0.00';
+        document.getElementById(`ramUsagetext_${instanceId}`).textContent = `${ramUsagePercent}%`;
+      }
+
+      function updateCpuUsage(stats, instanceId) {
+        const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
+        const systemCpuDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
+        let cpuUsagePercent = ((cpuDelta / systemCpuDelta) * 100).toFixed(2);
+        if (isNaN(cpuUsagePercent)) {
+          cpuUsagePercent = 0;
+        }
+        document.getElementById(`cpuUsagetext_${instanceId}`).textContent = `${cpuUsagePercent}%`;
+      }
+
+      function updateStatus(stats, instanceId) {
+        const statusElement = document.getElementById(`status_${instanceId}`);
+        const ramUsageRaw = stats.memory_stats.usage / 1024 / 1024 || 0;
+
+        if (ramUsageRaw > 1) {
+          statusElement.textContent = 'Online';
+          statusElement.className = 'text-emerald-500 bg-neutral-600/10 px-2 py-0.5 rounded-lg';
+        } else {
+          statusElement.textContent = 'Offline';
+          statusElement.className = 'text-red-500 bg-neutral-500/10 px-2 py-0.5 rounded-lg';
+        }
+      }
+
+      function executenodedown(instanceId) {
+        const statusElement = document.getElementById(`status_${instanceId}`);
+        statusElement.textContent = 'Node Offline';
+        statusElement.className = 'text-red-500 bg-neutral-500/10 px-2 py-0.5 rounded-lg';
+      }
+
+      function executecontainernotfound(instanceId) {
+        const statusElement = document.getElementById(`status_${instanceId}`);
+        statusElement.textContent = 'Container not found';
+        statusElement.className = 'text-yellow-500 bg-neutral-500/10 px-2 py-0.5 rounded-lg';
+      }
+
+      function isValidJson(str) {
+        try {
+          JSON.parse(str);
+        } catch (e) {
+          return false;
+        }
+        return true;
+      }
+
+      function initStatsWebSocket(instanceId) {
+        const statsWs = new WebSocket(`${protocol}://${window.location.hostname}:${window.location.port}/stats/${instanceId}`);
+        statsWs.onmessage = event => {
+          if (event.data.includes("The Daemon instance appears to be down. Retrying...")) {
+            executenodedown(instanceId);
+            return;
+          }
+
+          if (event.data.includes("Container not found")) {
+            executecontainernotfound(instanceId);
+            return;
+          }
+
+          if (isValidJson(event.data)) {
+            const stats = JSON.parse(event.data);
+            if (stats.error) return;
+            updateRamUsage(stats, instanceId);
+            updateCpuUsage(stats, instanceId);
+            updateStatus(stats, instanceId);
+          }
+        };
+        statsWs.onerror = error => {
+          console.error('WebSocket error:', error);
+        };
+        statsWs.onclose = () => {
+          console.log(`WebSocket Stats connection for instance ${instanceId} closed, attempting to reconnect...`);
+          setTimeout(() => initStatsWebSocket(instanceId), 3000);
+        };
+      }
+    </script>
+    <script>
+      function InstallingState(instanceId) {
+        const statusElement = document.getElementById(`status_${instanceId}`);
+        statusElement.textContent = 'INSTALLING';
+        statusElement.className = 'text-green-500';
+      }
+    </script>
+    <div class="flex items-center gap-3 mb-12">
+      <% if (req.user.admin === true) { %>
+        <div class="relative inline-block" x-data="{ open: false }">
+          <button @click="open = !open" class="flex items-center justify-center gap-2 px-5 text-sm font-medium text-white transition-all duration-200 bg-green-500 rounded-full shadow hover:scale-95 h-11 hover:bg-green-700 focus:ring-2 focus:ring-green-800 focus:ring-offset-2 ring-offset-gray-200 hover:shadow-none">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 9.75V10.5" />
+            </svg>
+            <span>Filter</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="transition-transform duration-200 size-4" :class="open ? 'rotate-180' : ''">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+            </svg>
+          </button>
+          <div x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:leave="transition ease-in duration-200" class="absolute right-0 w-48 mt-2 border shadow-lg rounded-xl bg-white/5 backdrop-blur-xl border-white/10">
+            <div class="py-2">
+              <% if (req.query.see == 'other') { %>
+                <a href="/instances" class="flex items-center gap-2 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors">
+                  <%= req.translations.showingYourInstances %>
+                </a>
+              <% } else { %>
+                <a href="/instances?see=other" class="flex items-center gap-2 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors">
+                  <%= req.translations.seeAllInstances %>
+                </a>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+<% if (req.query.err === "CONTAINER_NOT_FOUND") { %>
+      <div class="rounded-xl bg-red-100 dark:bg-red-800/10 px-4 py-6 m-7 mb-4">
+        <div class="flex">
+          <div class="flex-shrink-0 ml-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-11 w-8 text-red-500 dark:text-red-400">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>              
+          </div>
+          <div class="ml-5">
+            <h3 class="text-sm font-medium text-red-700 dark:text-red-400">Container not found</h3>
+            <p class="text-sm text-red-500 dark:text-red-400/50">Server not found in the node , contact an administrator if you believe this is a mistake.</p>
+          </div>
+        </div>
+      </div>
+    <% } %>
+    <% if (req.query.err === "SUSPENDED") { %>
+      <div class="rounded-xl bg-amber-100 dark:bg-amber-800/10 px-4 py-6 m-7 mb-4">
+        <div class="flex">
+          <div class="flex-shrink-0 ml-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-11 w-8 text-amber-500 dark:text-amber-400">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>              
+          </div>
+          <div class="ml-5">
+            <h3 class="text-sm font-medium text-amber-700 dark:text-amber-400">Server Suspended</h3>
+            <p class="text-sm text-amber-500 dark:text-amber-400/50">Server Suspended , if you think this is a mistake then contact a administrator.</p>
+          </div>
+        </div>
+      </div>
+    <% } %>
+  <!-- 💠 Glass Box for Servers -->
+  <div class="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-6 w-full shadow-xl transition-all duration-300">
+    <table class="min-w-full divide-y divide-white/10">
+      <thead class="bg-white/5">
+        <tr>
+          <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-white sm:pl-6">Server</th>
+          <th class="px-3 py-3.5 text-left text-sm font-semibold text-white">Status</th>
+          <th class="px-3 py-3.5 text-left text-sm font-semibold text-white">RAM Usage</th>
+          <th class="px-3 py-3.5 text-left text-sm font-semibold text-white">CPU Usage</th>
+          <th class="px-3 py-3.5 text-left text-sm font-semibold text-white">Ip Address</th>
+        </tr>
+      </thead>
+      <% if (req.query.err === "CONTAINER_NOT_FOUND") { %>
+        <div class="rounded-xl bg-red-100 dark:bg-red-800/10 px-4 py-6 m-7 mb-4">
+          <div class="flex">
+            <div class="flex-shrink-0 ml-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-11 w-8 text-red-500 dark:text-red-400" viewBox="0 0 24 24" fill="none">
+                <path stroke-linecap="round" stroke-linejoin="round" d="..." />
+              </svg>
+            </div>
+            <div class="ml-5">
+              <h3 class="text-sm font-medium text-red-700 dark:text-red-400">Container not found</h3>
+              <p class="text-sm text-red-500 dark:text-red-400/50">Server not found in the node.</p>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <tbody class="divide-y divide-white/10 bg-white/5">
+        <% instances.forEach(instance => { %>
+          <tr onclick="window.location.href = '../instance/<%= instance.Id %>';" class="hover:bg-white/10 cursor-pointer">
+            <td class="py-4 pl-4 pr-3 text-sm font-medium text-white sm:pl-6"><%= instance.Name %></td>
+            <% if (instance.suspended === true) { %>
+              <td class="px-3 py-4 text-sm">
+                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-extrabold rounded-full bg-amber-100">Suspended</span>
+              </td>
+            <% } else { %>
+              <td class="px-3 py-4 text-sm">
+                <span id="status_<%= instance.Id %>" class="bg-neutral-500/10 inline-flex items-center px-2.5 py-0.5 text-xs font-extrabold rounded-full">Connecting</span>
+              </td>
+            <% } %>
+            <td class="px-3 py-4 text-sm text-neutral-300"><span id="ramUsagetext_<%= instance.Id %>" class="border border-neutral-600/20 bg-neutral-500/10 px-2 py-0.5 rounded-lg">Connecting</span></td>
+            <td class="px-3 py-4 text-sm text-neutral-300"><span id="cpuUsagetext_<%= instance.Id %>" class="border border-neutral-600/20 bg-neutral-500/10 px-2 py-0.5 rounded-lg">Connecting</span></td>
+            <td class="px-3 py-4 text-sm text-neutral-300"><span class="border border-neutral-600/20 bg-neutral-500/10 px-2 py-0.5 rounded-lg"><%= instance.Node.address %>:<%= instance.Primary %></span></td>
+          </tr>
+          <script>
+            initStatsWebSocket('<%= instance.Id %>');
+          </script>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</main>
